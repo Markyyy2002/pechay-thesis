@@ -5,6 +5,7 @@ import { auth } from './firebase';
 import Login from './components/Login';
 import Signup from './components/Signup';
 import Home from './components/Home';
+import ForgotPassword from './components/ForgotPassword';
 
 const App = () => {
   const [user, setUser] = React.useState(null);
@@ -22,6 +23,7 @@ const App = () => {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route
           path="/home"
           element={user ? <Home /> : <Navigate to="/login" />}

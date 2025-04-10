@@ -1,0 +1,140 @@
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Automated Plant Nursery</title>
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          background-color: #f4f4f4;
+          background-image: url('bg.jpg');
+          background-size: cover; /* Optional: makes sure the image covers the whole screen */
+          background-position: center;
+          margin: 0;
+          padding: 0;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          height: 100vh;
+          color: #333;
+        }
+        .container {
+          background-color: rgba(255, 255, 255, 0.952); /* White background with 80% opacity */
+          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+          padding: 20px;
+          border-radius: 10px;
+          box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+          text-align: center;
+          width: 700px;
+        }
+        h1 {
+          color: #4CAF50;
+          font-size: 24px;
+        }
+        .data {
+          margin: 10px 0;
+          font-size: 18px;
+        }
+        .button {
+          background-color: #4CAF50;
+          color: white;
+          padding: 10px 20px;
+          margin: 10px;
+          font-size: 16px;
+          border: none;
+          border-radius: 5px;
+          cursor: pointer;
+        }
+        .button:hover {
+          background-color: #45a049;
+        }
+        .status {
+          font-size: 14px;
+          color: #888;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>Automated Plant Nursery</h1>
+        <div class="data">Temperature: <span id="temp">Loading...</span> °C</div>
+        <div class="data">Humidity: <span id="humidity">Loading...</span> %</div>
+        <div class="data">Moisture: <span id="moisture">Loading...</span></div>
+        <div class="data">Rain: <span id="rain">Loading...</span></div>
+        <div class="data">Water Pump: <span id="pump">Loading...</span></div>
+        <div class="data">System: <span id="system-status">Loading...</span></div>
+        
+        <button class="button" onclick="toggleRelay()">Toggle Water Pump</button>
+        <button class="button" onclick="rotateClockwise()">Rotate Clockwise</button>
+        <button class="button" onclick="rotateCounterClockwise()">Rotate Counter-Clockwise</button>
+    
+        <div class="status">Status: <span id="action-status">Idle</span></div>
+      </div>
+    
+      <script>
+        const ESP32_IP = "http://192.168.1.17";
+    
+        // Function to update the data
+        function updateData() {
+          fetch(`${ESP32_IP}/getTemp`)
+            .then(response => response.text())
+            .then(temp => document.getElementById('temp').innerText = temp);
+    
+          fetch(`${ESP32_IP}/getHumidity`)
+            .then(response => response.text())
+            .then(humidity => document.getElementById('humidity').innerText = humidity);
+    
+          fetch(`${ESP32_IP}/getMoisture`)
+            .then(response => response.text())
+            .then(moisture => document.getElementById('moisture').innerText = moisture);
+    
+          fetch(`${ESP32_IP}/getRain`)
+            .then(response => response.text())
+            .then(rain => document.getElementById('rain').innerText = rain);
+    
+          fetch(`${ESP32_IP}/getStatus`)
+            .then(response => response.text())
+            .then(status => document.getElementById('system-status').innerText = status);
+        }
+    
+        // Update the data every 5 seconds
+        setInterval(updateData, 5000);
+    
+        // Function to toggle the water pump
+        function toggleRelay() {
+          fetch(`${ESP32_IP}/relay`)
+            .then(response => response.text())
+            .then(data => {
+              document.getElementById('action-status').innerText = data;
+              updateData();
+            });
+        }
+    
+        // Function to rotate stepper motor clockwise
+        function rotateClockwise() {
+          fetch(`${ESP32_IP}/clockwise`)
+            .then(response => response.text())
+            .then(data => {
+              document.getElementById('action-status').innerText = data;
+              updateData();
+            });
+        }
+    
+        // Function to rotate stepper motor counter-clockwise
+        function rotateCounterClockwise() {
+          fetch(`${ESP32_IP}/counterclockwise`)
+            .then(response => response.text())
+            .then(data => {
+              document.getElementById('action-status').innerText = data;
+              updateData();
+            });
+        }
+    
+        // Initial data load
+        updateData();
+      </script>
+    </body>
+    </html>
+    
+    

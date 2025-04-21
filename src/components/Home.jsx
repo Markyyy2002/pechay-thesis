@@ -141,6 +141,16 @@ const Home = () => {
               {controls.isWaterPumpOn ? 'ON' : 'OFF'}
             </div>
           </div>
+
+          <div style={styles.dataCard}>
+            <h3>Roof Status</h3>
+            <div style={{
+              ...styles.dataValue,
+              color: controls.isRoofOpen ? '#4CAF50' : '#f44336'
+            }}>
+              {controls.isRoofOpen ? 'OPEN' : 'CLOSED'}
+            </div>
+          </div>
         </div>
 
         <div style={styles.controlPanel}>

@@ -21,7 +21,7 @@ const Header = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
         <div className="flex items-center">
           <img src={Logo} alt="Logo" className="h-8 w-auto mr-3" />
-          <h1 className="text-xl font-semibold text-gray-800">Pechay Dashboard</h1>
+          <h1 className="text-xl font-semibold text-gray-800">Dashboard</h1>
         </div>
         <div className="flex items-center space-x-4">
           <span className="text-sm text-gray-600">{auth.currentUser?.email}</span>

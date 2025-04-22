@@ -13,20 +13,20 @@
 DHT dht(DHTPIN, DHTTYPE);
 
 // Firebase credentials
-#define FIREBASE_HOST "https://pechay-thesis-default-rtdb.asia-southeast1.firebasedatabase.app/"
-#define FIREBASE_AUTH "AIzaSyDmBWWU8biW7hZ4jn8DCFiY0D7kvOnMQJ"
+#define DATABASE_URL "https://pechay-thesis-default-rtdb.asia-southeast1.firebasedatabase.app/"
+#define API_KEY "AIzaSyDmBWWU8biW7hZ4jn8DCFiY0D7kvOnMQJE"
 
 // Firebase objects
 FirebaseData fbdo;
 FirebaseAuth auth;
 FirebaseConfig config;
 
-const char* ssid = "Marky";
-const char* pass = "markjon2990";
+const char* ssid = "ZTE_2.4G_uXJqdF";
+const char* pass = "AreY0uSurE?";
 
 // NTP Server for timestamp
-const char* ntpServer = "pool.ntp.org";
-const long  gmtOffset_sec = 28800;  // GMT+8 for Philippines (8 hours * 3600 seconds)
+const char* ntpServer = "time.google.com";
+const long  gmtOffset_sec = 28800;
 const int   daylightOffset_sec = 0;
 
 // Relay pin for the water pump
@@ -42,8 +42,8 @@ const int STEPS_PER_REV = 2048;
 Stepper stepper(STEPS_PER_REV, IN1, IN2, IN3, IN4);
 
 // Thresholds
-const float TEMP_THRESHOLD = 34.0;
-const int RAIN_THRESHOLD = 50;
+const float TEMP_THRESHOLD = 30.0;
+const int RAIN_THRESHOLD = 30;
 const int MOISTURE_THRESHOLD = 55;
 
 // State flag for roof position
@@ -57,33 +57,75 @@ bool pumpActivatedNotified = false;
 bool roofOpenedNotified = false;
 bool roofClosedNotified = false;
 
+struct tm timeinfo;
+bool timeInitialized = false;
+
+// Debug flag to track setup completion
+bool setupCompleted = false;
+
 void setup() {
     Serial.begin(115200);
-    WiFi.begin(ssid, pass);
-
+    delay(1000); // Give serial monitor time to connect
+    
+    Serial.println("ESP32 starting up...");
+    
+    // WiFi connection with timeout
     Serial.println("Connecting to WiFi...");
-    while (WiFi.status() != WL_CONNECTED) {
+    WiFi.begin(ssid, pass);
+    
+    // Set a timeout for WiFi connection (30 seconds)
+    unsigned long startAttemptTime = millis();
+    while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < 30000) {
         delay(1000);
         Serial.print(".");
     }
-    Serial.println("\nConnected to WiFi");
-
-    // Initialize Firebase
-    config.database_url = FIREBASE_HOST;
-    config.api_key = FIREBASE_AUTH;
+    
+    if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("\nFailed to connect to WiFi. Check credentials or network.");
+    } else {
+        Serial.println("\nConnected to WiFi");
+    }
+    
+    // Initialize Firebase with error handling
+    Serial.println("Initializing Firebase...");
+    config.api_key = API_KEY;
+    config.database_url = DATABASE_URL;
+    
+    // Anonymous sign in
+    auth.user.email = "jlesterpansoy@gmail.com";
+    auth.user.password = "123456";
     
     Firebase.begin(&config, &auth);
     Firebase.reconnectWiFi(true);
-
-    // Initialize time
+    Serial.println("Firebase initialized");
+    
+    // Initialize time with timeout
+    Serial.println("Initializing time...");
     configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-
+    
+    int timeRetries = 0;
+    while(!getLocalTime(&timeinfo) && timeRetries < 3) {
+        Serial.println("Failed to obtain time, retrying...");
+        delay(1000);
+        timeRetries++;
+    }
+    
+    if(timeRetries >= 3) {
+        Serial.println("Time synchronization failed after multiple attempts");
+    } else {
+        Serial.println("Time synchronized successfully");
+        timeInitialized = true;
+    }
+    
+    // Initialize sensors
+    Serial.println("Initializing DHT sensor...");
     dht.begin();
-
-    // Initialize relay (active-low: HIGH = off)
+    
+    // Initialize pins
+    Serial.println("Initializing pins...");
     pinMode(RELAY_PIN, OUTPUT);
-    digitalWrite(RELAY_PIN, HIGH); // Set the relay off by default
-
+    digitalWrite(RELAY_PIN, HIGH);
+    
     // Stepper motor setup
     pinMode(IN1, OUTPUT);
     pinMode(IN2, OUTPUT);
@@ -92,30 +134,72 @@ void setup() {
     stepper.setSpeed(15);
     
     // Send initial system startup notification
+    Serial.println("Sending startup notification...");
     sendNotification("System started and connected to WiFi", "info");
+    
+    Serial.println("Setup completed!");
+    setupCompleted = true;
 }
 
 void sendDataToFirebase(float temperature, int rain, int moisture, bool pumpStatus) {
-    Firebase.setFloat(fbdo, "/sensorData/temperature", temperature);
-    Firebase.setInt(fbdo, "/sensorData/rain", rain);
-    Firebase.setInt(fbdo, "/sensorData/moisture", moisture);
-    Firebase.setBool(fbdo, "/sensorData/pumpStatus", pumpStatus);
+    if (!Firebase.ready()) {
+        Serial.println("Firebase not ready, skipping data upload");
+        return;
+    }
+    
+    Serial.println("Sending data to Firebase...");
+    
+    if (Firebase.setFloat(fbdo, "/sensorData/temperature", temperature)) {
+        Serial.println("Temperature data sent");
+    } else {
+        Serial.print("Temperature data failed: ");
+        Serial.println(fbdo.errorReason());
+    }
+    
+    if (Firebase.setInt(fbdo, "/sensorData/rain", rain)) {
+        Serial.println("Rain data sent");
+    } else {
+        Serial.print("Rain data failed: ");
+        Serial.println(fbdo.errorReason());
+    }
+    
+    if (Firebase.setInt(fbdo, "/sensorData/moisture", moisture)) {
+        Serial.println("Moisture data sent");
+    } else {
+        Serial.print("Moisture data failed: ");
+        Serial.println(fbdo.errorReason());
+    }
+    
+    if (Firebase.setBool(fbdo, "/sensorData/pumpStatus", pumpStatus)) {
+        Serial.println("Pump status sent");
+    } else {
+        Serial.print("Pump status failed: ");
+        Serial.println(fbdo.errorReason());
+    }
 }
 
 String getTimestamp() {
-    struct tm timeinfo;
     if(!getLocalTime(&timeinfo)){
         Serial.println("Failed to obtain time");
         return "Time Error";
     }
+    timeInitialized = true;
     char timeStringBuff[30];
     strftime(timeStringBuff, sizeof(timeStringBuff), "%Y-%m-%d %H:%M:%S", &timeinfo);
     return String(timeStringBuff);
 }
 
 void sendNotification(String message, String severity) {
+    if (!Firebase.ready()) {
+        Serial.println("Firebase not ready yet, cannot send notifications");
+        return;
+    }
+
     String timestamp = getTimestamp();
     String notificationPath = "/notifications/" + String(millis());
+    
+    Serial.print("Sending notification: ");
+    Serial.println(message);
     
     if (Firebase.setString(fbdo, notificationPath + "/message", message)) {
         Serial.println("Message sent successfully");
@@ -137,9 +221,6 @@ void sendNotification(String message, String severity) {
         Serial.print("Timestamp sending failed: ");
         Serial.println(fbdo.errorReason());
     }
-    
-    Serial.print("Notification sent: ");
-    Serial.println(message);
 }
 
 void checkAndSendNotifications(float temperature, int rainValue, int moistureValue, bool pumpStatus) {
@@ -178,39 +259,100 @@ void checkAndSendNotifications(float temperature, int rainValue, int moistureVal
 }
 
 void loop() {
+    Serial.println("\n--- Loop Start ---");
+    
+    // Check if setup completed successfully
+    if (!setupCompleted) {
+        Serial.println("Setup did not complete successfully. Retrying...");
+        setup();
+        delay(5000);
+        return;
+    }
+
+    // Check WiFi connection
+    if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("WiFi connection lost. Reconnecting...");
+        WiFi.reconnect();
+        delay(5000);
+        return;
+    } else {
+        Serial.println("WiFi connected");
+    }
+
+    // Check Firebase connection
+    if (!Firebase.ready()) {
+        Serial.println("Firebase not ready, attempting to reconnect...");
+        Firebase.begin(&config, &auth);
+        delay(1000);
+    } else {
+        Serial.println("Firebase ready");
+    }
+
+    // Read sensor data with error checking
+    Serial.println("Reading sensors...");
+    
     float temperature = dht.readTemperature();
+    if (isnan(temperature)) {
+        Serial.println("Failed to read temperature from DHT sensor!");
+        temperature = 0;
+    } else {
+        Serial.print("Temperature: ");
+        Serial.println(temperature);
+    }
+    
     int rainValue = analogRead(RAIN_PIN);
-    int moistureValue = analogRead(MOISTURE_PIN);
-
-    rainValue = map(rainValue, 4095, 1500, 0, 100);
+    Serial.print("Rain raw value: ");
+    Serial.println(rainValue);
+    
+    rainValue = map(rainValue, 4095, 2048, 0, 100);
     rainValue = constrain(rainValue, 0, 100);
+    Serial.print("Rain mapped value: ");
+    Serial.println(rainValue);
 
-    moistureValue = map(moistureValue, 4095, 1500, 0, 100);
+    int moistureValue = analogRead(MOISTURE_PIN);
+    Serial.print("Moisture raw value: ");
+    Serial.println(moistureValue);
+    
+    moistureValue = map(moistureValue, 4095, 2048, 0, 100);
     moistureValue = constrain(moistureValue, 0, 100);
-
-    Serial.print("Temperature: ");
-    Serial.println(temperature);
+    Serial.print("Moisture mapped value: ");
+    Serial.println(moistureValue);
 
     int speedRPM = 15;
     int stepsPerSecond = (STEPS_PER_REV * speedRPM) / 60;
     int stepsFor10Seconds = stepsPerSecond * 20;
 
-    // 🌐 Read control mode from Firebase
+    // Read control mode from Firebase with error handling
+    Serial.println("Reading control settings from Firebase...");
     bool isManualModeOn = false;
     bool manualRoofOpen = false;
     bool manualPumpOn = false;
 
     if (Firebase.getBool(fbdo, "/controls/isManualModeOn")) {
         isManualModeOn = fbdo.boolData();
+        Serial.print("Manual mode: ");
+        Serial.println(isManualModeOn ? "ON" : "OFF");
+    } else {
+        Serial.println("Failed to read manual mode setting");
     }
+    
     if (Firebase.getBool(fbdo, "/controls/isRoofOpen")) {
         manualRoofOpen = fbdo.boolData();
+        Serial.print("Manual roof setting: ");
+        Serial.println(manualRoofOpen ? "OPEN" : "CLOSED");
+    } else {
+        Serial.println("Failed to read roof setting");
     }
+    
     if (Firebase.getBool(fbdo, "/controls/isWaterPumpOn")) {
         manualPumpOn = fbdo.boolData();
+        Serial.print("Manual pump setting: ");
+        Serial.println(manualPumpOn ? "ON" : "OFF");
+    } else {
+        Serial.println("Failed to read pump setting");
     }
 
-    // 🧠 Manual Mode Logic
+    // Control logic with more debug output
     if (isManualModeOn) {
         Serial.println("Manual mode active");
 
@@ -225,6 +367,8 @@ void loop() {
             stepper.step(-stepsFor10Seconds);
             roofIsOpen = false;
             sendNotification("Roof closed manually", "info");
+        } else {
+            Serial.println("No roof movement needed");
         }
 
         // Pump control
@@ -235,8 +379,6 @@ void loop() {
             Serial.println("Manual command: Turning OFF pump");
             digitalWrite(RELAY_PIN, HIGH);
         }
-
-    // 🤖 Automatic Mode Logic
     } else {
         Serial.println("Automatic mode active");
 
@@ -278,12 +420,18 @@ void loop() {
         }
     }
   
-    // 🔥 Send sensor data back to Firebase
+    // Send sensor data back to Firebase
     bool pumpStatus = digitalRead(RELAY_PIN) == LOW;
+    Serial.print("Pump status: ");
+    Serial.println(pumpStatus ? "ON" : "OFF");
+    
     sendDataToFirebase(temperature, rainValue, moistureValue, pumpStatus);
     
     // Check conditions and send notifications
+    Serial.println("Checking notification conditions...");
     checkAndSendNotifications(temperature, rainValue, moistureValue, pumpStatus);
 
-    delay(1000);
+    Serial.println("--- Loop End ---");
+    Serial.println("Waiting 2 seconds before next cycle...");
+    delay(2000);
 }

@@ -1,27 +1,37 @@
 import React, { useEffect, useState } from 'react';
-import { auth } from '../firebase';
-import { signOut } from 'firebase/auth';
-import { useNavigate } from 'react-router-dom';
 import { ref, onValue, set } from 'firebase/database';
 import { database } from '../firebase';
-import bgImage from '../assets/image/bg.jpg';
+import Header from '../components/Home/Header';
+import StatCard from '../components/Home/StatCard';
+import SensorChart from '../components/Home/SensorChart';
+import ControlPanel from '../components/Home/ControlPanel';
+import MoistureChart from '../components/Home/MoistureChart';
+import { TemperatureIcon, MoistureIcon, RainIcon, SystemModeIcon } from '../components/Home/Icons';
 
 const Home = () => {
-  const navigate = useNavigate();
   const [sensorData, setSensorData] = useState({
     temperature: 'Loading...',
     moisture: 'Loading...',
     rain: 'Loading...',
   });
+
   const [controls, setControls] = useState({
     isManualModeOn: false,
     isWaterPumpOn: false,
     isRoofOpen: false
   });
 
-  // Realtime data listeners
+  const [historyData, setHistoryData] = useState([
+    { time: '00:00', temperature: 24, moisture: 65, rain: 0 },
+    { time: '04:00', temperature: 22, moisture: 68, rain: 0 },
+    { time: '08:00', temperature: 25, moisture: 62, rain: 10 },
+    { time: '12:00', temperature: 28, moisture: 55, rain: 5 },
+    { time: '16:00', temperature: 27, moisture: 58, rain: 0 },
+    { time: '20:00', temperature: 25, moisture: 60, rain: 0 },
+    { time: '24:00', temperature: 23, moisture: 63, rain: 0 },
+  ]);
+
   useEffect(() => {
-    // Sensor data listener
     const sensorDataRef = ref(database, 'sensorData');
     const sensorUnsubscribe = onValue(sensorDataRef, (snapshot) => {
       const data = snapshot.val();
@@ -31,10 +41,25 @@ const Home = () => {
           moisture: data.moisture !== undefined ? `${data.moisture}%` : 'N/A',
           rain: data.rain !== undefined ? `${data.rain}%` : 'N/A',
         });
+
+        const newEntry = {
+          time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+          temperature: data.temperature || 0,
+          moisture: data.moisture || 0,
+          rain: data.rain || 0
+        };
+
+        setHistoryData(prevData => {
+          const newData = [...prevData, newEntry];
+          // Keep only the last 7 entries
+          if (newData.length > 7) {
+            return newData.slice(newData.length - 7);
+          }
+          return newData;
+        });
       }
     });
 
-    // Controls listener
     const controlsRef = ref(database, 'controls');
     const controlsUnsubscribe = onValue(controlsRef, (snapshot) => {
       const data = snapshot.val();
@@ -52,15 +77,6 @@ const Home = () => {
       controlsUnsubscribe();
     };
   }, []);
-
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      navigate('/login');
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-  };
 
   const updateControl = async (controlName, value) => {
     await set(ref(database, `controls/${controlName}`), value);
@@ -81,211 +97,55 @@ const Home = () => {
     await updateControl('isRoofOpen', newValue);
   };
 
-  const ToggleSwitch = ({ checked, onChange, disabled = false }) => (
-    <label style={styles.toggleSwitch}>
-      <input 
-        type="checkbox" 
-        checked={checked}
-        onChange={onChange}
-        disabled={disabled}
-        style={styles.toggleInput}
-      />
-      <span style={{
-        ...styles.toggleSlider,
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        backgroundColor: checked ? '#4CAF50' : '#ccc',
-        opacity: disabled ? 0.6 : 1
-      }}>
-        <span style={{
-          ...styles.toggleKnob,
-          transform: checked ? 'translateX(26px)' : 'translateX(0)'
-        }} />
-      </span>
-    </label>
-  );
-
-  const ControlRow = ({ label, checked, onChange, disabled = false }) => (
-    <div style={styles.controlRow}>
-      <span>{label}</span>
-      <ToggleSwitch checked={checked} onChange={onChange} disabled={disabled} />
-    </div>
-  );
-
   return (
-    <div style={styles.background}>
-      <div style={styles.container}>
-        <h1 style={styles.title}>Automated Plant Nursery</h1>
+    <div className="min-h-screen bg-gray-100">
+      <Header />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <StatCard
+            title="Temperature"
+            value={sensorData.temperature}
+            icon={<TemperatureIcon />}
+            bgColor="bg-purple-100"
+          />
 
-        <div style={styles.dataContainer}>
-          <div style={styles.dataCard}>
-            <h3>Temperature</h3>
-            <div style={styles.dataValue}>{sensorData.temperature}</div>
-          </div>
+          <StatCard
+            title="Soil Moisture"
+            value={sensorData.moisture}
+            icon={<MoistureIcon />}
+            bgColor="bg-blue-100"
+          />
 
-          <div style={styles.dataCard}>
-            <h3>Soil Moisture</h3>
-            <div style={styles.dataValue}>{sensorData.moisture}</div>
-          </div>
+          <StatCard
+            title="Rain"
+            value={sensorData.rain}
+            icon={<RainIcon />}
+            bgColor="bg-green-100"
+          />
 
-          <div style={styles.dataCard}>
-            <h3>Rain</h3>
-            <div style={styles.dataValue}>{sensorData.rain}</div>
-          </div>
-
-          <div style={styles.dataCard}>
-            <h3>Water Pump</h3>
-            <div style={{
-              ...styles.dataValue,
-              color: controls.isWaterPumpOn ? '#4CAF50' : '#f44336'
-            }}>
-              {controls.isWaterPumpOn ? 'ON' : 'OFF'}
-            </div>
-          </div>
-
-          <div style={styles.dataCard}>
-            <h3>Roof Status</h3>
-            <div style={{
-              ...styles.dataValue,
-              color: controls.isRoofOpen ? '#4CAF50' : '#f44336'
-            }}>
-              {controls.isRoofOpen ? 'OPEN' : 'CLOSED'}
-            </div>
-          </div>
+          <StatCard
+            title="System Mode"
+            value={controls.isManualModeOn ? 'Manual' : 'Auto'}
+            icon={<SystemModeIcon />}
+            bgColor="bg-yellow-100"
+          />
         </div>
 
-        <div style={styles.controlPanel}>
-          <h3>System Controls</h3>
-          
-          <div style={styles.controlsContainer}>
-            <ControlRow 
-              label="Manual Mode" 
-              checked={controls.isManualModeOn} 
-              onChange={toggleManualMode} 
-            />
-            
-            <ControlRow 
-              label="Water Pump" 
-              checked={controls.isWaterPumpOn} 
-              onChange={toggleWaterPump} 
-              disabled={!controls.isManualModeOn} 
-            />
-            
-            <ControlRow 
-              label="Roof" 
-              checked={controls.isRoofOpen} 
-              onChange={toggleRoof} 
-              disabled={!controls.isManualModeOn} 
-            />
-          </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <SensorChart data={historyData} />
+
+          <ControlPanel
+            controls={controls}
+            toggleManualMode={toggleManualMode}
+            toggleWaterPump={toggleWaterPump}
+            toggleRoof={toggleRoof}
+          />
         </div>
 
-        <button style={styles.logoutButton} onClick={handleLogout}>Logout</button>
-      </div>
+        <MoistureChart data={historyData} />
+      </main>
     </div>
   );
-};
-
-const styles = {
-  background: {
-    backgroundImage: `url(${bgImage})`,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    minHeight: '100vh',
-    minWidth: '100vw',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: '20px'
-  },
-  container: {
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
-    borderRadius: '15px',
-    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-    padding: '30px',
-    width: '100%',
-    maxWidth: '800px',
-    textAlign: 'center'
-  },
-  title: {
-    color: '#2E7D32',
-    marginBottom: '30px',
-    fontSize: '28px'
-  },
-  dataContainer: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-    gap: '20px',
-    marginBottom: '30px'
-  },
-  dataCard: {
-    backgroundColor: 'white',
-    borderRadius: '10px',
-    padding: '15px',
-    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
-  },
-  dataValue: {
-    fontSize: '24px',
-    fontWeight: 'bold',
-    marginTop: '10px'
-  },
-  controlPanel: {
-    backgroundColor: 'white',
-    borderRadius: '10px',
-    padding: '20px',
-    marginBottom: '20px',
-    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
-  },
-  controlsContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '15px',
-    marginTop: '15px'
-  },
-  controlRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center'
-  },
-  toggleSwitch: {
-    display: 'inline-block',
-    position: 'relative',
-    width: '60px',
-    height: '34px'
-  },
-  toggleInput: {
-    opacity: 0,
-    width: 0,
-    height: 0
-  },
-  toggleSlider: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    transition: '.4s',
-    borderRadius: '34px'
-  },
-  toggleKnob: {
-    position: 'absolute',
-    height: '26px',
-    width: '26px',
-    left: '4px',
-    bottom: '4px',
-    backgroundColor: 'white',
-    transition: '.4s',
-    borderRadius: '50%'
-  },
-  logoutButton: {
-    backgroundColor: '#f44336',
-    color: 'white',
-    border: 'none',
-    borderRadius: '5px',
-    padding: '12px 25px',
-    fontSize: '16px',
-    cursor: 'pointer',
-    transition: 'background-color 0.3s'
-  }
 };
 
 export default Home;

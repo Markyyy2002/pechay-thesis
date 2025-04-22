@@ -72,7 +72,7 @@ const Signup = () => {
             
             <button 
               type="submit" 
-              className="w-full py-2 md:py-3 bg-green-800 hover:bg-green-700 text-white rounded-full text-sm md:text-base cursor-pointer transition-colors duration-200"
+              className="w-full py-2 md:py-3 font-medium bg-green-800 hover:bg-green-700 text-white rounded-full text-sm md:text-base cursor-pointer transition-colors duration-200"
             >
               Sign Up
             </button>
@@ -82,7 +82,7 @@ const Signup = () => {
           
           <button 
             onClick={handleGoogleSignup} 
-            className="w-full py-2 md:py-3 mx-auto flex justify-center items-center rounded-full text-sm md:text-base cursor-pointer border border-gray-400 hover:bg-gray-50 transition-colors duration-200"
+            className="w-full py-2 md:py-3 font-medium mx-auto flex justify-center items-center rounded-full text-sm md:text-base cursor-pointer border border-gray-400 hover:bg-gray-50 transition-colors duration-200"
           >
             <span className="w-5 h-5 md:w-6 md:h-6 bg-contain bg-no-repeat bg-center mr-2" style={{ backgroundImage: "url('/src/assets/image/google.png')" }}></span>
             <span>Sign up with Google</span>

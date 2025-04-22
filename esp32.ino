@@ -59,9 +59,11 @@ bool roofClosedNotified = false;
 
 struct tm timeinfo;
 bool timeInitialized = false;
-
-// Debug flag to track setup completion
 bool setupCompleted = false;
+
+unsigned long lastHistoricalStorageTime = 0;
+const unsigned long HISTORY_INTERVAL = 60000; // 1 minute in milliseconds
+
 
 void setup() {
     Serial.begin(115200);
@@ -147,8 +149,6 @@ void sendDataToFirebase(float temperature, int rain, int moisture, bool pumpStat
         return;
     }
     
-    Serial.println("Sending data to Firebase...");
-    
     if (Firebase.setFloat(fbdo, "/sensorData/temperature", temperature)) {
         Serial.println("Temperature data sent");
     } else {
@@ -175,6 +175,51 @@ void sendDataToFirebase(float temperature, int rain, int moisture, bool pumpStat
     } else {
         Serial.print("Pump status failed: ");
         Serial.println(fbdo.errorReason());
+    }
+
+    unsigned long currentTime = millis();
+    if (currentTime - lastHistoricalStorageTime >= HISTORY_INTERVAL) {
+        Serial.println("Storing hourly historical data...");
+        
+        String timestamp = getTimestamp();
+        String historyPath = "/hourly_history/" + timestamp;
+
+        if (Firebase.setFloat(fbdo, historyPath + "/temperature", temperature)) {
+            Serial.println("Historical temperature data stored");
+        } else {
+            Serial.print("Historical temperature data failed: ");
+            Serial.println(fbdo.errorReason());
+        }
+
+        if (Firebase.setInt(fbdo, historyPath + "/rain", rain)) {
+            Serial.println("Historical rain data stored");
+        } else {
+            Serial.print("Historical rain data failed: ");
+            Serial.println(fbdo.errorReason());
+        }
+
+        if (Firebase.setInt(fbdo, historyPath + "/moisture", moisture)) {
+            Serial.println("Historical moisture data stored");
+        } else {
+            Serial.print("Historical moisture data failed: ");
+            Serial.println(fbdo.errorReason());
+        }
+
+        if (Firebase.setBool(fbdo, historyPath + "/pumpStatus", pumpStatus)) {
+            Serial.println("Historical pump status stored");
+        } else {
+            Serial.print("Historical pump status failed: ");
+            Serial.println(fbdo.errorReason());
+        }
+
+        lastHistoricalStorageTime = currentTime;
+
+        if (Firebase.getInt(fbdo, "/hourly_history_count")) {
+            int count = fbdo.intData() + 1;
+            Firebase.setInt(fbdo, "/hourly_history_count", count);
+        } else {
+            Firebase.setInt(fbdo, "/hourly_history_count", 1);
+        }
     }
 }
 

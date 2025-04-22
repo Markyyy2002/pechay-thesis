@@ -69,8 +69,9 @@ void setup() {
     Serial.println("\nConnected to WiFi");
 
     // Initialize Firebase
-    config.host = FIREBASE_HOST;
-    config.signer.tokens.legacy_token = FIREBASE_AUTH;
+    config.database_url = FIREBASE_HOST;
+    config.api_key = FIREBASE_AUTH;
+    
     Firebase.begin(&config, &auth);
     Firebase.reconnectWiFi(true);
 
@@ -116,9 +117,26 @@ void sendNotification(String message, String severity) {
     String timestamp = getTimestamp();
     String notificationPath = "/notifications/" + String(millis());
     
-    Firebase.setString(fbdo, notificationPath + "/message", message);
-    Firebase.setString(fbdo, notificationPath + "/severity", severity);
-    Firebase.setString(fbdo, notificationPath + "/timestamp", timestamp);
+    if (Firebase.setString(fbdo, notificationPath + "/message", message)) {
+        Serial.println("Message sent successfully");
+    } else {
+        Serial.print("Message sending failed: ");
+        Serial.println(fbdo.errorReason());
+    }
+    
+    if (Firebase.setString(fbdo, notificationPath + "/severity", severity)) {
+        Serial.println("Severity sent successfully");
+    } else {
+        Serial.print("Severity sending failed: ");
+        Serial.println(fbdo.errorReason());
+    }
+    
+    if (Firebase.setString(fbdo, notificationPath + "/timestamp", timestamp)) {
+        Serial.println("Timestamp sent successfully");
+    } else {
+        Serial.print("Timestamp sending failed: ");
+        Serial.println(fbdo.errorReason());
+    }
     
     Serial.print("Notification sent: ");
     Serial.println(message);

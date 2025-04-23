@@ -4,10 +4,10 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './firebase';
 import './App.css';
 
-import Login from './components/Login';
-import Signup from './components/Signup';
-import Home from './pages/Home';
-import ForgotPassword from './components/ForgotPassword';
+const Login = lazy(() => import('./components/Login'));
+const Signup = lazy(() => import('./components/Signup'));
+const ForgotPassword = lazy(() => import('./components/ForgotPassword'));
+const Home = lazy(() => import('./pages/Home'));
 
 function App() {
   const [user, setUser] = useState(null);

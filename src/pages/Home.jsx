@@ -35,30 +35,40 @@ const Home = () => {
   useEffect(() => {
     const sensorDataRef = ref(database, 'sensorData');
     const sensorUnsubscribe = onValue(sensorDataRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
+      try {
+        const data = snapshot.val();
+        if (data) {
+          setSensorData({
+            temperature: data.temperature !== undefined ? `${data.temperature.toFixed(1)}°C` : 'N/A',
+            moisture: data.moisture !== undefined ? `${data.moisture}%` : 'N/A',
+            rain: data.rain !== undefined ? `${data.rain}%` : 'N/A',
+          });
+
+          const newEntry = {
+            time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+            temperature: data.temperature || 0,
+            moisture: data.moisture || 0,
+            rain: data.rain || 0
+          };
+
+          setHistoryData(prevData => {
+            const newData = [...prevData, newEntry];
+            if (newData.length > 7) {
+              return newData.slice(newData.length - 7);
+            }
+            return newData;
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching sensor data:", error);
         setSensorData({
-          temperature: data.temperature !== undefined ? `${data.temperature.toFixed(1)}°C` : 'N/A',
-          moisture: data.moisture !== undefined ? `${data.moisture}%` : 'N/A',
-          rain: data.rain !== undefined ? `${data.rain}%` : 'N/A',
-        });
-
-        const newEntry = {
-          time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-          temperature: data.temperature || 0,
-          moisture: data.moisture || 0,
-          rain: data.rain || 0
-        };
-
-        setHistoryData(prevData => {
-          const newData = [...prevData, newEntry];
-          // Keep only the last 7 entries
-          if (newData.length > 7) {
-            return newData.slice(newData.length - 7);
-          }
-          return newData;
+          temperature: 'Error',
+          moisture: 'Error',
+          rain: 'Error',
         });
       }
+    }, (error) => {
+      console.error("Database error:", error);
     });
 
     const controlsRef = ref(database, 'controls');
@@ -99,9 +109,9 @@ const Home = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 flex flex-col">
       <Header />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatCard
             title="Temperature"
@@ -150,6 +160,20 @@ const Home = () => {
           <NotificationsPanel />
         </div>
       </main>
+      
+      {/* Footer Component */}
+      <footer className="bg-white shadow-inner py-4 mt-auto">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <p className="text-sm text-gray-600">
+              &copy; {new Date().getFullYear()} Pechay Monitoring System. All rights reserved.
+            </p>
+            <p className="text-sm text-gray-500 mt-2 md:mt-0">
+              Smart Agriculture Thesis Project
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };

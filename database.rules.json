@@ -1,6 +1,16 @@
 {
   "rules": {
-    ".read": "now < 1744819200000",  // 2025-4-17
-    ".write": "now < 1744819200000",  // 2025-4-17
+    "sensorData": {
+      ".read": true,
+      ".write": true
+    },
+    "hourly_history": {
+      ".read": true,
+      ".write": true
+    },
+    "notifications": {
+      ".read": true,
+      ".write": true
+    }
   }
 }

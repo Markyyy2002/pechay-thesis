@@ -90,46 +90,54 @@ const Signup = () => {
   };
 
   return (
-    <div className="flex justify-center items-center w-full h-screen">
-      <div className="flex w-full md:w-[90vw] lg:w-[80vw] xl:w-[60vw] h-[90vh] shadow-none md:shadow-md rounded-lg overflow-hidden">
-        <div className="w-full md:w-1/2 md:bg-white flex flex-col justify-center p-6 md:p-8 lg:p-12">
-          <h1 className="text-xl md:text-2xl font-medium text-gray-800 mb-1">Create an account!</h1>
-          <h3 className="text-xs md:text-sm text-gray-600 font-normal mb-4 md:mb-6">Enter your details to get started</h3>
+    <div className="flex justify-center items-center w-full min-h-screen bg-gray-50 md:bg-white p-4 md:p-0">
+      <div className="flex w-full md:w-[90vw] lg:w-[80vw] xl:w-[60vw] md:h-[90vh] shadow-sm md:shadow-md rounded-2xl overflow-hidden">
+        <div className="w-full md:w-1/2 bg-white flex flex-col justify-center p-6 md:p-8 lg:p-12">
+          <div className="mb-8 md:mb-6">
+            <h1 className="text-2xl md:text-2xl font-semibold text-gray-800 mb-2">Create an account!</h1>
+            <h3 className="text-sm md:text-sm text-gray-600 font-normal">Enter your details to get started</h3>
+          </div>
 
-          {error && <p className="text-red-500 text-xs md:text-sm mb-4 text-center">{error}</p>}
+          {error && <p className="text-red-500 text-sm mb-4 text-center bg-red-50 p-2 rounded-lg">{error}</p>}
 
-          <form onSubmit={handleSignup} className="flex flex-col items-center w-full">
-            <input
-              type="email"
-              placeholder="Email address"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 md:py-3 mb-3 md:mb-4 border border-gray-300 rounded-md text-sm md:text-base focus:outline-none focus:ring-1 focus:ring-green-700"
-              required
-            />
-
-            <div className="w-full mb-3 md:mb-4">
+          <form onSubmit={handleSignup} className="flex flex-col items-center w-full space-y-4 md:space-y-3">
+            <div className="w-full">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email address</label>
               <input
+                id="email"
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 md:py-3 border border-gray-300 rounded-lg text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-green-700 focus:border-transparent"
+                required
+              />
+            </div>
+
+            <div className="w-full">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <input
+                id="password"
                 type={showPassword ? "text" : "password"}
-                placeholder="Password"
+                placeholder="Create a password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 md:py-3 border border-gray-300 rounded-md text-sm md:text-base focus:outline-none focus:ring-1 focus:ring-green-700"
+                className="w-full px-4 py-3 md:py-3 border border-gray-300 rounded-lg text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-green-700 focus:border-transparent"
                 required
               />
               
               {password && (
-                <div className="mt-1">
+                <div className="mt-2">
                   <div className="flex justify-between items-center mb-1">
                     <div className="flex space-x-1 w-full">
                       {[...Array(5)].map((_, i) => (
                         <div 
                           key={i} 
-                          className={`h-1 flex-1 rounded-full ${i < passwordStrength ? getStrengthColor() : "bg-gray-200"}`}
+                          className={`h-1.5 flex-1 rounded-full ${i < passwordStrength ? getStrengthColor() : "bg-gray-200"}`}
                         ></div>
                       ))}
                     </div>
-                    <span className="text-xs ml-2 w-16 text-right">
+                    <span className="text-xs ml-2 w-16 text-right font-medium">
                       {getStrengthLabel()}
                     </span>
                   </div>
@@ -140,14 +148,16 @@ const Signup = () => {
               )}
             </div>
 
-            <div className="w-full mb-3 md:mb-4">
+            <div className="w-full">
+              <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 mb-1">Confirm password</label>
               <input
+                id="confirm-password"
                 type={showPassword ? "text" : "password"}
-                placeholder="Confirm password"
+                placeholder="Confirm your password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className={`w-full px-3 py-2 md:py-3 border rounded-md text-sm md:text-base focus:outline-none focus:ring-1 focus:ring-green-700 ${
-                  confirmPassword && !passwordMatch ? "border-red-500" : "border-gray-300"
+                className={`w-full px-4 py-3 md:py-3 border rounded-lg text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-green-700 focus:border-transparent ${
+                  confirmPassword && !passwordMatch ? "border-red-500 bg-red-50" : "border-gray-300"
                 }`}
                 required
               />
@@ -156,41 +166,45 @@ const Signup = () => {
               )}
             </div>
 
-            <div className="flex items-center mb-3 md:mb-4 w-full">
+            <div className="flex items-center w-full">
               <input
                 type="checkbox"
                 id="show-password"
                 checked={showPassword}
                 onChange={() => setShowPassword(!showPassword)}
-                className="mr-2"
+                className="h-4 w-4 text-green-800 focus:ring-green-700 border-gray-300 rounded"
               />
-              <label htmlFor="show-password" className="text-xs md:text-sm text-gray-600 cursor-pointer">
+              <label htmlFor="show-password" className="ml-2 text-sm text-gray-600 cursor-pointer">
                 Show Password
               </label>
             </div>
 
             <button
               type="submit"
-              className="w-full py-2 md:py-3 font-medium bg-green-800 hover:bg-green-700 text-white rounded-full text-sm md:text-base cursor-pointer transition-colors duration-200"
+              className="w-full py-3 md:py-3 font-medium bg-green-800 hover:bg-green-700 text-white rounded-lg text-sm md:text-base cursor-pointer transition-colors duration-200 mt-4 disabled:opacity-70 disabled:cursor-not-allowed"
               disabled={!passwordMatch || passwordStrength <= 2}
             >
               Sign Up
             </button>
           </form>
 
-          <div className="text-center text-gray-600 my-2">or</div>
+          <div className="flex items-center my-6">
+            <div className="flex-grow h-px bg-gray-200"></div>
+            <span className="px-3 text-sm text-gray-500">or</span>
+            <div className="flex-grow h-px bg-gray-200"></div>
+          </div>
 
           <button
             onClick={handleGoogleSignup}
-            className="w-full py-2 md:py-3 font-medium mx-auto flex justify-center items-center rounded-full text-sm md:text-base cursor-pointer border border-gray-400 hover:bg-gray-50 transition-colors duration-200"
+            className="w-full py-3 md:py-3 font-medium mx-auto flex justify-center items-center rounded-lg text-sm md:text-base cursor-pointer border border-gray-300 hover:bg-gray-50 transition-colors duration-200"
           >
-            <span className="w-5 h-5 md:w-6 md:h-6 bg-contain bg-no-repeat bg-center mr-2" style={{ backgroundImage: `url(${GoogleLogo})` }}></span>
+            <img src={GoogleLogo} alt="Google" className="w-5 h-5 mr-2" />
             <span>Sign up with Google</span>
           </button>
 
-          <p className="text-center text-xs md:text-sm text-gray-600 mt-4">
+          <p className="text-center text-sm text-gray-600 mt-6">
             Already have an account?{" "}
-            <Link to="/login" className="text-green-800 hover:underline cursor-pointer">
+            <Link to="/login" className="text-green-800 font-medium hover:underline cursor-pointer">
               Login
             </Link>
           </p>

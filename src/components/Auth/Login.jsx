@@ -1,9 +1,9 @@
 import React, { useState } from "react";
-import { auth, googleProvider } from "../firebase";
+import { auth, googleProvider } from "../../firebase";
 import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
 import { useNavigate, Link } from "react-router-dom";
-import GoogleLogo from "../assets/image/google.png";
-import NurseryImage from "../assets/image/nursery.jpg";
+import GoogleLogo from "../../assets/image/google.png";
+import NurseryImage from "../../assets/image/nursery.jpg";
 
 const Login = () => {
   const [email, setEmail] = useState("");

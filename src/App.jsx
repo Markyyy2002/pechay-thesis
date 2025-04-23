@@ -4,9 +4,10 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './firebase';
 import './App.css';
 
-const Login = lazy(() => import('./components/Login'));
-const Signup = lazy(() => import('./components/Signup'));
-const ForgotPassword = lazy(() => import('./components/ForgotPassword'));
+const Login = lazy(() => import('./components/Auth/Login'));
+const Signup = lazy(() => import('./components/Auth/Signup'));
+const ForgotPassword = lazy(() => import('./components/Auth/ForgotPassword'));
+const ResetPassword = lazy(() => import('./components/Auth/ResetPassword'));
 const Home = lazy(() => import('./pages/Home'));
 
 function App() {
@@ -34,6 +35,7 @@ function App() {
         <Route path="/login" element={user ? <Navigate to="/home" /> : <Login />} />
         <Route path="/signup" element={user ? <Navigate to="/home" /> : <Signup />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/home" element={
           <ProtectedRoute>
             <Home />

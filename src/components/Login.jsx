@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { auth, googleProvider } from "../firebase";
 import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
 import { useNavigate, Link } from "react-router-dom";
+import GoogleLogo from "../assets/image/google.png";
+import NurseryImage from "../assets/image/nursery.jpg";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -88,7 +90,7 @@ const Login = () => {
             onClick={handleGoogleLogin} 
             className="w-full py-2 md:py-3 font-medium mx-auto flex justify-center items-center rounded-full text-sm md:text-base cursor-pointer border border-gray-400 hover:bg-gray-50 transition-colors duration-200"
           >
-            <span className="w-5 h-5 md:w-6 md:h-6 bg-contain bg-no-repeat bg-center mr-2" style={{ backgroundImage: "url('/src/assets/image/google.png')" }}></span>
+            <span className="w-5 h-5 md:w-6 md:h-6 bg-contain bg-no-repeat bg-center mr-2" style={{ backgroundImage: `url(${GoogleLogo})` }}></span>
             <span>Sign in with Google</span>
           </button>
           
@@ -100,7 +102,7 @@ const Login = () => {
           </p>
         </div>
         
-        <div className="hidden md:block md:w-1/2 bg-cover bg-center rounded-r-lg" style={{ backgroundImage: "url('/src/assets/image/nursery.jpg')" }}></div>
+        <div className="hidden md:block md:w-1/2 bg-cover bg-center rounded-r-lg" style={{ backgroundImage: `url(${NurseryImage})` }}></div>
       </div>
     </div>
   );

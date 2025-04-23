@@ -1,6 +1,7 @@
 import React from 'react'
 import { ref, remove } from 'firebase/database';
 import { DeleteIcon, ErrorIcon, InfoIcon, WarningIcon } from './NotificationIcons';
+import { database } from '../../../firebase';
 
 const NotificationCard = ({ id, notification }) => {
     const { message, severity, timestamp } = notification;

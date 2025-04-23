@@ -29,7 +29,6 @@ const ControlPanel = ({ controls, toggleManualMode, toggleWaterPump, toggleRoof 
                         checked={controls.isWaterPumpOn}
                         onChange={toggleWaterPump}
                         disabled={!controls.isManualModeOn}
-                        ringColor="ring-blue-300"
                         checkedBgColor="bg-blue-600"
                     />
                 </div>

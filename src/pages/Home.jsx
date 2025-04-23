@@ -6,6 +6,7 @@ import StatCard from '../components/Home/StatCard';
 import SensorChart from '../components/Home/SensorChart';
 import ControlPanel from '../components/Home/ControlPanel';
 import MoistureChart from '../components/Home/MoistureChart';
+import NotificationsPanel from '../components/Home/Notifications/NotificationsPanel';
 import { TemperatureIcon, MoistureIcon, RainIcon, SystemModeIcon } from '../components/Home/Icons';
 
 const Home = () => {
@@ -142,7 +143,12 @@ const Home = () => {
           />
         </div>
 
-        <MoistureChart data={historyData} />
+        <div className='grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6'>
+          <div className='lg:col-span-2'>
+            <MoistureChart data={historyData} />
+          </div>
+          <NotificationsPanel />
+        </div>
       </main>
     </div>
   );

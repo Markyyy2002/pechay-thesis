@@ -94,7 +94,7 @@ void setup() {
     config.database_url = DATABASE_URL;
     
     // Anonymous sign in
-    auth.user.email = "jlesterpansoy@gmail.com";
+    auth.user.email = "panoy@gmail.com";
     auth.user.password = "123456";
     
     Firebase.begin(&config, &auth);
@@ -181,34 +181,27 @@ void sendDataToFirebase(float temperature, int rain, int moisture, bool pumpStat
     if (currentTime - lastHistoricalStorageTime >= HISTORY_INTERVAL) {
         Serial.println("Storing hourly historical data...");
         
-        String timestamp = getTimestamp();
-        String historyPath = "/hourly_history/" + timestamp;
-
-        if (Firebase.setFloat(fbdo, historyPath + "/temperature", temperature)) {
-            Serial.println("Historical temperature data stored");
+        time_t epochTime;
+        time(&epochTime);
+        
+        String historyPath = "/hourly_history/" + String(epochTime);
+        
+        Serial.print("Storing historical data at path: ");
+        Serial.println(historyPath);
+    
+        String readableTimestamp = getTimestamp();
+    
+        FirebaseJson json;
+        json.set("temperature", temperature);
+        json.set("rain", rain);
+        json.set("moisture", moisture);
+        json.set("pumpStatus", pumpStatus);
+        json.set("readableTime", readableTimestamp);
+    
+        if (Firebase.setJSON(fbdo, historyPath, json)) {
+            Serial.println("Historical data stored successfully");
         } else {
-            Serial.print("Historical temperature data failed: ");
-            Serial.println(fbdo.errorReason());
-        }
-
-        if (Firebase.setInt(fbdo, historyPath + "/rain", rain)) {
-            Serial.println("Historical rain data stored");
-        } else {
-            Serial.print("Historical rain data failed: ");
-            Serial.println(fbdo.errorReason());
-        }
-
-        if (Firebase.setInt(fbdo, historyPath + "/moisture", moisture)) {
-            Serial.println("Historical moisture data stored");
-        } else {
-            Serial.print("Historical moisture data failed: ");
-            Serial.println(fbdo.errorReason());
-        }
-
-        if (Firebase.setBool(fbdo, historyPath + "/pumpStatus", pumpStatus)) {
-            Serial.println("Historical pump status stored");
-        } else {
-            Serial.print("Historical pump status failed: ");
+            Serial.print("Historical data storage failed: ");
             Serial.println(fbdo.errorReason());
         }
 
@@ -342,7 +335,7 @@ void loop() {
     Serial.print("Rain raw value: ");
     Serial.println(rainValue);
     
-    rainValue = map(rainValue, 4095, 2048, 0, 100);
+    rainValue = map(rainValue, 4095, 1500, 0, 100);
     rainValue = constrain(rainValue, 0, 100);
     Serial.print("Rain mapped value: ");
     Serial.println(rainValue);
@@ -471,5 +464,5 @@ void loop() {
 
     Serial.println("--- Loop End ---");
     Serial.println("Waiting 2 seconds before next cycle...");
-    delay(2000);
+    delay(1000);
 }

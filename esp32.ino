@@ -213,13 +213,6 @@ void sendDataToFirebase(float temperature, int rain, int moisture, bool pumpStat
         }
 
         lastHistoricalStorageTime = currentTime;
-
-        if (Firebase.getInt(fbdo, "/hourly_history_count")) {
-            int count = fbdo.intData() + 1;
-            Firebase.setInt(fbdo, "/hourly_history_count", count);
-        } else {
-            Firebase.setInt(fbdo, "/hourly_history_count", 1);
-        }
     }
 }
 

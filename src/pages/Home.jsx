@@ -8,11 +8,16 @@ import ControlPanel from '../components/Home/ControlPanel';
 import MoistureChart from '../components/Home/MoistureChart';
 import NotificationsPanel from '../components/Home/Notifications/NotificationsPanel';
 import Footer from '../components/Home/Footer';
-import { TemperatureIcon, MoistureIcon, RainIcon, SystemModeIcon } from '../components/Home/Icons';
+import { FaCloudRain } from "react-icons/fa";
+import { FaTemperatureHalf } from "react-icons/fa6";
+import { BsMoisture } from "react-icons/bs";
+import { RiWaterPercentLine } from "react-icons/ri";
+import { MdAutoMode } from "react-icons/md";
 
 const Home = () => {
   const [sensorData, setSensorData] = useState({
     temperature: 'Loading...',
+    humidity: 'Loading...',
     moisture: 'Loading...',
     rain: 'Loading...',
   });
@@ -41,6 +46,7 @@ const Home = () => {
         if (data) {
           setSensorData({
             temperature: data.temperature !== undefined ? `${data.temperature.toFixed(1)}°C` : 'N/A',
+            humidity: data.humidity !== undefined ? `${data.humidity.toFixed(1)}%` : 'N/A', // Read humidity
             moisture: data.moisture !== undefined ? `${data.moisture}%` : 'N/A',
             rain: data.rain !== undefined ? `${data.rain}%` : 'N/A',
           });
@@ -48,6 +54,7 @@ const Home = () => {
           const newEntry = {
             time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
             temperature: data.temperature || 0,
+            humidity: data.humidity || 0,
             moisture: data.moisture || 0,
             rain: data.rain || 0
           };
@@ -64,6 +71,7 @@ const Home = () => {
         console.error("Error fetching sensor data:", error);
         setSensorData({
           temperature: 'Error',
+          humidity: 'Error', 
           moisture: 'Error',
           rain: 'Error',
         });
@@ -113,33 +121,41 @@ const Home = () => {
     <div className="min-h-screen bg-gray-100 flex flex-col">
       <Header />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8">
           <StatCard
             title="Temperature"
             value={sensorData.temperature}
-            icon={<TemperatureIcon />}
+            icon={<FaTemperatureHalf />}
             bgColor="bg-purple-100"
+            iconColor={"text-purple-600"}
           />
-
+          <StatCard
+            title="Humidity"
+            value={sensorData.humidity}
+            icon={<RiWaterPercentLine />} 
+            bgColor="bg-cyan-100" 
+            iconColor={"text-cyan-600"}
+          />
           <StatCard
             title="Soil Moisture"
             value={sensorData.moisture}
-            icon={<MoistureIcon />}
+            icon={<BsMoisture />}
             bgColor="bg-blue-100"
+            iconColor={"text-blue-600"}
           />
-
           <StatCard
             title="Rain"
             value={sensorData.rain}
-            icon={<RainIcon />}
+            icon={<FaCloudRain />}
             bgColor="bg-green-100"
+            iconColor={"text-green-600"}
           />
-
           <StatCard
             title="System Mode"
             value={controls.isManualModeOn ? 'Manual' : 'Auto'}
-            icon={<SystemModeIcon />}
+            icon={<MdAutoMode />}
             bgColor="bg-yellow-100"
+            iconColor={"text-yellow-600"}
           />
         </div>
 

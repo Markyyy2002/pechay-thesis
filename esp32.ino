@@ -30,7 +30,7 @@ const long  gmtOffset_sec = 28800;
 const int   daylightOffset_sec = 0;
 
 // Relay pin for the water pump
-const int RELAY_PIN = 35;
+const int RELAY_PIN = 25;
 
 // Stepper motor pins
 #define IN1 27
@@ -143,7 +143,7 @@ void setup() {
     setupCompleted = true;
 }
 
-void sendDataToFirebase(float temperature, int rain, int moisture, bool pumpStatus) {
+void sendDataToFirebase(float temperature, float humidity, int rain, int moisture, bool pumpStatus) {
     if (!Firebase.ready()) {
         Serial.println("Firebase not ready, skipping data upload");
         return;
@@ -153,6 +153,13 @@ void sendDataToFirebase(float temperature, int rain, int moisture, bool pumpStat
         Serial.println("Temperature data sent");
     } else {
         Serial.print("Temperature data failed: ");
+        Serial.println(fbdo.errorReason());
+    }
+
+    if(Firebase.setFloat(fbdo, "/sensorData/humidity", humidity)) {
+        Serial.println("Humidity data sent");
+    } else {
+        Serial.print("Humidity data failed: ");
         Serial.println(fbdo.errorReason());
     }
     
@@ -193,6 +200,7 @@ void sendDataToFirebase(float temperature, int rain, int moisture, bool pumpStat
     
         FirebaseJson json;
         json.set("temperature", temperature);
+        json.set("humidity", humidity);
         json.set("rain", rain);
         json.set("moisture", moisture);
         json.set("pumpStatus", pumpStatus);
@@ -254,7 +262,7 @@ void sendNotification(String message, String severity) {
     }
 }
 
-void checkAndSendNotifications(float temperature, int rainValue, int moistureValue, bool pumpStatus) {
+void checkAndSendNotifications(float temperature, float humidity, int rainValue, int moistureValue, bool pumpStatus) {
     // Temperature notifications
     if (temperature > TEMP_THRESHOLD && !highTempNotified) {
         sendNotification("High temperature detected: " + String(temperature) + "°C", "warning");
@@ -323,12 +331,16 @@ void loop() {
     Serial.println("Reading sensors...");
     
     float temperature = dht.readTemperature();
-    if (isnan(temperature)) {
-        Serial.println("Failed to read temperature from DHT sensor!");
+    float humidity = dht.readHumidity();
+    if (isnan(temperature) || isnan(humidity)) {
+        Serial.println("Failed to read readings from DHT sensor!");
         temperature = 0;
+        humidity = 0;
     } else {
         Serial.print("Temperature: ");
         Serial.println(temperature);
+        Serial.print("Humidity: ");
+        Serial.println(humidity);
     }
     
     int rainValue = analogRead(RAIN_PIN);
@@ -456,11 +468,11 @@ void loop() {
     Serial.print("Pump status: ");
     Serial.println(pumpStatus ? "ON" : "OFF");
     
-    sendDataToFirebase(temperature, rainValue, moistureValue, pumpStatus);
+    sendDataToFirebase(temperature, humidity, rainValue, moistureValue, pumpStatus);
     
     // Check conditions and send notifications
     Serial.println("Checking notification conditions...");
-    checkAndSendNotifications(temperature, rainValue, moistureValue, pumpStatus);
+    checkAndSendNotifications(temperature, humidity, rainValue, moistureValue, pumpStatus);
 
     Serial.println("--- Loop End ---");
     Serial.println("Waiting 2 seconds before next cycle...");

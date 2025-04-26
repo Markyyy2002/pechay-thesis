@@ -29,7 +29,7 @@ const ControlPanel = ({ controls, toggleManualMode, toggleWaterPump, toggleRoof 
                         checked={controls.isWaterPumpOn}
                         onChange={toggleWaterPump}
                         disabled={!controls.isManualModeOn}
-                        checkedBgColor="bg-blue-600"
+                        checkedBgColor="bg-teal-600"
                     />
                 </div>
 
@@ -42,7 +42,6 @@ const ControlPanel = ({ controls, toggleManualMode, toggleWaterPump, toggleRoof 
                         checked={controls.isRoofOpen}
                         onChange={toggleRoof}
                         disabled={!controls.isManualModeOn}
-                        ringColor="ring-yellow-300"
                         checkedBgColor="bg-yellow-600"
                     />
                 </div>

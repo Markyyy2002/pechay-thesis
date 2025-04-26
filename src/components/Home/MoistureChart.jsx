@@ -9,8 +9,8 @@ const MoistureChart = ({ data }) => {
                 <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="time" />
-                        <YAxis />
+                        <XAxis dataKey="time" fontSize={12}/>
+                        <YAxis fontSize={12}/>
                         <Tooltip />
                         <Area type="monotone" dataKey="moisture" stroke="#8884d8" fill="#8884d8" />
                     </AreaChart>

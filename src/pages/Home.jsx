@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ref, onValue, set } from 'firebase/database';
+import { ref, onValue, set, query, orderByKey, startAt } from 'firebase/database';
 import { database } from '../firebase';
 import Header from '../components/Home/Header';
 import StatCard from '../components/Home/StatCard';
@@ -28,15 +28,8 @@ const Home = () => {
     isRoofOpen: false
   });
 
-  const [historyData, setHistoryData] = useState([
-    { time: '00:00', temperature: 24, moisture: 65, rain: 0 },
-    { time: '04:00', temperature: 22, moisture: 68, rain: 0 },
-    { time: '08:00', temperature: 25, moisture: 62, rain: 10 },
-    { time: '12:00', temperature: 28, moisture: 55, rain: 5 },
-    { time: '16:00', temperature: 27, moisture: 58, rain: 0 },
-    { time: '20:00', temperature: 25, moisture: 60, rain: 0 },
-    { time: '24:00', temperature: 23, moisture: 63, rain: 0 },
-  ]);
+  const [historyData, setHistoryData] = useState([]);
+  const [timeRange, setTimeRange] = useState('day');
 
   useEffect(() => {
     const sensorDataRef = ref(database, 'sensorData');
@@ -46,38 +39,22 @@ const Home = () => {
         if (data) {
           setSensorData({
             temperature: data.temperature !== undefined ? `${data.temperature.toFixed(1)}°C` : 'N/A',
-            humidity: data.humidity !== undefined ? `${data.humidity.toFixed(1)}%` : 'N/A', // Read humidity
+            humidity: data.humidity !== undefined ? `${data.humidity.toFixed(1)}%` : 'N/A',
             moisture: data.moisture !== undefined ? `${data.moisture}%` : 'N/A',
             rain: data.rain !== undefined ? `${data.rain}%` : 'N/A',
-          });
-
-          const newEntry = {
-            time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-            temperature: data.temperature || 0,
-            humidity: data.humidity || 0,
-            moisture: data.moisture || 0,
-            rain: data.rain || 0
-          };
-
-          setHistoryData(prevData => {
-            const newData = [...prevData, newEntry];
-            if (newData.length > 7) {
-              return newData.slice(newData.length - 7);
-            }
-            return newData;
           });
         }
       } catch (error) {
         console.error("Error fetching sensor data:", error);
         setSensorData({
           temperature: 'Error',
-          humidity: 'Error', 
+          humidity: 'Error',
           moisture: 'Error',
           rain: 'Error',
         });
       }
     }, (error) => {
-      console.error("Database error:", error);
+      console.error("Database error (sensorData):", error);
     });
 
     const controlsRef = ref(database, 'controls');
@@ -92,11 +69,70 @@ const Home = () => {
       }
     });
 
+    const now = new Date();
+    let startTime = new Date();
+
+    if (timeRange === 'day') {
+      startTime.setDate(now.getDate() - 1); 
+    } else if (timeRange === 'week') {
+      startTime.setDate(now.getDate() - 7);
+    } else if (timeRange === 'month') {
+      startTime.setMonth(now.getMonth() - 1); 
+    }
+
+    const startTimestamp = Math.floor(startTime.getTime() / 1000);
+
+    const historyRef = query(
+      ref(database, 'hourly_history'),
+      orderByKey(), 
+      startAt(startTimestamp.toString()) 
+    );
+
+    const historyUnsubscribe = onValue(historyRef, (snapshot) => {
+        try {
+            const data = snapshot.val();
+            if (data) {
+                const processedData = Object.entries(data)
+                    .map(([key, value]) => {
+                        const timestampMs = parseInt(key) * 1000; 
+                        const date = new Date(timestampMs);
+
+                        let displayTime;
+                        if (timeRange === 'day') {
+                            displayTime = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }); // HH:MM
+                        } else {
+                            displayTime = date.toLocaleTimeString('en-US', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                        }
+
+                        return {
+                            time: displayTime, 
+                            timestamp: parseInt(key),
+                            temperature: value.temperature !== undefined ? value.temperature : 0,
+                            humidity: value.humidity !== undefined ? value.humidity : 0,
+                            moisture: value.moisture !== undefined ? value.moisture : 0,
+                            rain: value.rain !== undefined ? value.rain : 0,
+                        };
+                    });
+                setHistoryData(processedData);
+            } else {
+                setHistoryData([]);
+            }
+        } catch (error) {
+            console.error("Error fetching historical data:", error);
+            setHistoryData([]);
+        }
+    }, (error) => {
+        console.error("Database error (hourly_history):", error);
+        setHistoryData([]);
+    });
+
+
     return () => {
       sensorUnsubscribe();
       controlsUnsubscribe();
+      historyUnsubscribe();
     };
-  }, []);
+  }, [timeRange]); 
 
   const updateControl = async (controlName, value) => {
     await set(ref(database, `controls/${controlName}`), value);
@@ -105,6 +141,11 @@ const Home = () => {
   const toggleManualMode = async () => {
     const newValue = !controls.isManualModeOn;
     await updateControl('isManualModeOn', newValue);
+
+    if(!newValue){
+      await updateControl('isWaterPumpOn', false);
+      await updateControl('isRoofOpen', false);
+    }
   };
 
   const toggleWaterPump = async () => {
@@ -132,8 +173,8 @@ const Home = () => {
           <StatCard
             title="Humidity"
             value={sensorData.humidity}
-            icon={<RiWaterPercentLine />} 
-            bgColor="bg-cyan-100" 
+            icon={<RiWaterPercentLine />}
+            bgColor="bg-cyan-100"
             iconColor={"text-cyan-600"}
           />
           <StatCard
@@ -160,7 +201,11 @@ const Home = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <SensorChart data={historyData} />
+          <SensorChart
+            data={historyData}
+            timeRange={timeRange}
+            setTimeRange={setTimeRange}
+          />
 
           <ControlPanel
             controls={controls}

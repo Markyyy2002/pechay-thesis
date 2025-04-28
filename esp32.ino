@@ -45,6 +45,8 @@ Stepper stepper(STEPS_PER_REV, IN1, IN2, IN3, IN4);
 const float TEMP_THRESHOLD = 30.0;
 const int RAIN_THRESHOLD = 30;
 const int MOISTURE_THRESHOLD = 55;
+const int DAY_START_HOUR = 7; // 7:00 AM
+const int DAY_END_HOUR = 19; // 7:00 PM
 
 // State flag for roof position
 bool roofIsOpen = false;
@@ -63,11 +65,19 @@ bool setupCompleted = false;
 
 unsigned long lastHistoricalStorageTime = 0;
 const unsigned long HISTORY_INTERVAL = 60000; // 1 minute in milliseconds
+unsigned long lastStepTime = 0;
+int stepsRemaining = 0;
+int stepDirection = 1;
+bool needToOpenRoof = false;
+bool needToCloseRoof = false;
+
+bool openRoof = false;
+bool closeRoof = false;
 
 
 void setup() {
     Serial.begin(115200);
-    delay(1000); // Give serial monitor time to connect
+    delay(1000);
     
     Serial.println("ESP32 starting up...");
     
@@ -93,7 +103,7 @@ void setup() {
     config.api_key = API_KEY;
     config.database_url = DATABASE_URL;
     
-    // Anonymous sign in
+    // Demo user - KANI GAMITA MARK HA INIG DEMO
     auth.user.email = "panoy@gmail.com";
     auth.user.password = "123456";
     
@@ -400,16 +410,12 @@ void loop() {
         Serial.println("Manual mode active");
 
         // Roof control
-        if (manualRoofOpen && !roofIsOpen) {
+        if (manualRoofOpen && !roofIsOpen && stepsRemaining == 0) {
             Serial.println("Manual command: Opening roof");
-            stepper.step(stepsFor10Seconds);
-            roofIsOpen = true;
-            sendNotification("Roof opened manually", "info");
-        } else if (!manualRoofOpen && roofIsOpen) {
+            needToOpenRoof = true;
+        } else if (!manualRoofOpen && roofIsOpen && stepsRemaining == 0) {
             Serial.println("Manual command: Closing roof");
-            stepper.step(-stepsFor10Seconds);
-            roofIsOpen = false;
-            sendNotification("Roof closed manually", "info");
+            needToCloseRoof = true;
         } else {
             Serial.println("No roof movement needed");
         }
@@ -425,33 +431,47 @@ void loop() {
     } else {
         Serial.println("Automatic mode active");
 
-        // Roof logic based on temperature or rain
-        if (!isnan(temperature)) {
-            if ((temperature > TEMP_THRESHOLD || rainValue > RAIN_THRESHOLD) && !roofIsOpen) {
-                Serial.println("Opening roof: Temp > threshold or Rain > threshold");
-                stepper.step(stepsFor10Seconds);
-                roofIsOpen = true;
-                
-                // Send roof opened notification with reason
-                if (temperature > TEMP_THRESHOLD && rainValue > RAIN_THRESHOLD) {
-                    sendNotification("Roof opened automatically due to high temperature and rain", "info");
-                } else if (temperature > TEMP_THRESHOLD) {
-                    sendNotification("Roof opened automatically due to high temperature", "info");
-                } else {
-                    sendNotification("Roof opened automatically due to rain", "info");
+        if(!getLocalTime(&timeinfo)){
+            Serial.println("Failed to obtain time");
+            // return;
+        } else {
+            int currentHour = timeinfo.tm_hour;
+            Serial.print("Current hour: ");
+            Serial.println(currentHour);
+
+            // Day/Night roof control
+            if(currentHour >= DAY_START_HOUR && currentHour < DAY_END_HOUR) {
+                if(!roofIsOpen && rainValue <= RAIN_THRESHOLD && stepsRemaining == 0) {
+                    Serial.println("Opening roof: Day time");
+                    needToOpenRoof = true;
                 }
-                
-            } else if (temperature <= TEMP_THRESHOLD && rainValue <= RAIN_THRESHOLD && roofIsOpen) {
-                Serial.println("Closing roof: Temp and Rain below threshold");
-                stepper.step(-stepsFor10Seconds);
-                roofIsOpen = false;
-                sendNotification("Roof closed automatically as conditions normalized", "info");
             } else {
-                Serial.println("No roof movement needed");
+                if(roofIsOpen && stepsRemaining == 0) {
+                    Serial.println("Closing roof: Night time");
+                    needToCloseRoof = true;
+                }
+            }
+    
+            // Roof logic based on temperature or rain
+            if (!isnan(temperature)) {
+                if ((temperature > TEMP_THRESHOLD || rainValue > RAIN_THRESHOLD) && !roofIsOpen && stepsRemaining == 0) {
+                    Serial.println("Opening roof: Temp > threshold or Rain > threshold");
+                    needToOpenRoof = true;
+                    
+                } else if (temperature <= TEMP_THRESHOLD && rainValue <= RAIN_THRESHOLD && roofIsOpen && stepsRemaining == 0) {
+                    int currentHour = timeinfo.tm_hour;
+                    if (currentHour < DAY_START_HOUR || currentHour >= DAY_END_HOUR) {
+                        Serial.println("Closing roof: Temp and Rain below threshold");
+                        needToCloseRoof = true;
+                    } else {
+                        Serial.println("Keeping roof open during daytime despite normal conditions");
+                    }
+                } else {
+                    Serial.println("No roof movement needed");
+                }
             }
         }
 
-        // Pump logic
         Serial.print("Moisture: ");
         Serial.println(moistureValue);
         if (moistureValue <= MOISTURE_THRESHOLD) {
@@ -470,11 +490,58 @@ void loop() {
     
     sendDataToFirebase(temperature, humidity, rainValue, moistureValue, pumpStatus);
     
-    // Check conditions and send notifications
     Serial.println("Checking notification conditions...");
     checkAndSendNotifications(temperature, humidity, rainValue, moistureValue, pumpStatus);
 
+    if(needToOpenRoof && stepsRemaining == 0) {
+        stepsRemaining = stepsFor10Seconds;
+        stepDirection = 1;
+        needToOpenRoof = false;
+        Serial.println("Starting to open the roof");    
+    } else if (needToCloseRoof && stepsRemaining == 0) {
+        stepsRemaining = stepsFor10Seconds;
+        stepDirection = -1;
+        needToCloseRoof = false;
+        Serial.println("Starting to close the roof");
+    }
+
+    if(stepsRemaining > 0) {
+        unsigned long currentMillis = millis();
+        if(currentMillis - lastStepTime >= 2) {
+            stepper.step(stepDirection * 10);
+            stepsRemaining -= 10;
+            lastStepTime = currentMillis;
+
+            if(stepsRemaining <= 0) {
+                stepsRemaining = 0;
+                roofIsOpen = (stepDirection > 0); 
+
+                if(roofIsOpen) {
+                    if(isManualModeOn) {
+                        sendNotification("Roof opened manually", "info");
+                    } else if (temperature > TEMP_THRESHOLD && rainValue > RAIN_THRESHOLD) {
+                        sendNotification("Roof opened due to high temperature or rain", "info");
+                    } else if (temperature > TEMP_THRESHOLD) {
+                        sendNotification("Roof opened due to high temperature", "info");
+                    } else if (rainValue > RAIN_THRESHOLD) {
+                        sendNotification("Roof opened due to heavy rain", "info");
+                    } else {
+                        sendNotification("Roof opened automatically", "info");
+                    }
+                } else {
+                    int currentHour = timeinfo.tm_hour;
+                    if (currentHour < DAY_START_HOUR || currentHour >= DAY_END_HOUR) {
+                        sendNotification("Roof closed automatically during nighttime", "info");
+                    } else {
+                        sendNotification("Roof closed automatically", "info");
+                    }
+                }
+                Serial.println(roofIsOpen ? "Roof is now open" : "Roof is now closed");
+            }
+        }
+    }
+
     Serial.println("--- Loop End ---");
-    Serial.println("Waiting 2 seconds before next cycle...");
+    Serial.println("Waiting 1 second before next cycle...");
     delay(1000);
 }
